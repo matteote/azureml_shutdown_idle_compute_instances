@@ -18,7 +18,7 @@ def main(argv):
         collector = Collector(idle_threshold_in_sec)
         print(collector.get_info())
     except Exception as ex:
-        print(f'Failed to collect instance information: {ex}')
+        print('Failed to collect instance information: {}'.format(ex))
         return 2
 
     return 0
@@ -57,11 +57,11 @@ class Collector:
             conn.request('GET', '/api/sessions')
             response = conn.getresponse()
         except Exception as ex:
-            raise Exception(f'Failed retrieving Jupyter sessions') from ex
+            raise Exception('Failed retrieving Jupyter sessions') from ex
 
         if response.status != 200:
             raise Exception(
-                f'Failed retrieving Jupyter sessions: HTTP status {response.status}')
+                'Failed retrieving Jupyter sessions: HTTP status {}'.format(response.status))
 
         try:
             content = response.read().decode('utf-8')
