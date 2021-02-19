@@ -2,6 +2,9 @@
 This script polls all running compute instances of an Azure ML workspace.
 
 If an instance is idle for more than a predefined period of time, the script shuts it down.
+
+The logic is based on https://github.com/csiebler/aml-compute-instance-snippets/blob/master/shutdown-if-inactive/shutdown_if_inactive.py
+
 ## Requirements
 ### OS
 Tested on Ubuntu 18.04 (other Ubuntu versions or Linux distributions may work)
