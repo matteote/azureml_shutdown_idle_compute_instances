@@ -1,0 +1,3 @@
+azure-cli-core
+azureml-core
+configargparse
