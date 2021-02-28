@@ -6,6 +6,7 @@ import logging
 import subprocess
 import sys
 import os.path
+import socket
 import time
 
 from azureml.core import Workspace
@@ -18,6 +19,10 @@ from configargparse import ArgParser
 AUTH_CLI = 'azure-cli'
 AUTH_MI = 'managed-identity'
 AUTH_SP = 'service-principal'
+
+IP_AUTO = 'auto'
+IP_PRIVATE = 'private'
+IP_PUBLIC = 'public'
 
 
 def main():
@@ -124,10 +129,13 @@ class AzureMLComputeInstanceShutdown:
                         )
 
     def get_compute_target_info(self, compute_target):
+        ssh_endpoint = self.get_compute_ssh_endpoint(compute_target)
+        logging.info(
+            f'connecting to compute instance {compute_target.name} on SSH endpoint {ssh_endpoint[0]}:{ssh_endpoint[1]}')
+
         ssh = SshClient(
             compute_target.admin_username,
-            compute_target.public_ip_address,
-            compute_target.ssh_port
+            *ssh_endpoint
         )
 
         SCRIPT = 'get_compute_instance_info.py'
@@ -149,6 +157,24 @@ class AzureMLComputeInstanceShutdown:
             print('Failed to decode json result')
             print(f'Content: {result}')
 
+    def get_compute_ssh_endpoint(self, compute_target):
+        if self.args.ip_address == IP_PRIVATE:
+            return (compute_target.private_ip_address, 22)
+        if self.args.ip_address == IP_PUBLIC or not compute_target.subnet_id:
+            return (compute_target.public_ip_address, compute_target.ssh_port)
+
+        # IP_AUTO
+        if not compute_target.ssh_public_access:
+            return (compute_target.private_ip_address, 22)
+
+        s = socket.socket()
+        try:
+            s.connect((compute_target.private_ip_address, 22))
+            s.close()
+            return (compute_target.private_ip_address, 22)
+        except:
+            return (compute_target.public_ip_address, compute_target.ssh_port)
+
 
 class SshClient:
     def __init__(self, user, host, port=22):
@@ -160,6 +186,7 @@ class SshClient:
             [
                 'ssh',
                 '-o StrictHostKeyChecking=no',
+                '-o ConnectTimeout=15',
                 self.destination,
                 '-p',
                 self.port
@@ -173,6 +200,7 @@ class SshClient:
             [
                 'scp',
                 '-o StrictHostKeyChecking=no',
+                '-o ConnectTimeout=15',
                 '-P',
                 self.port,
                 source,
@@ -240,6 +268,12 @@ def get_args():
         default=AUTH_MI,
         choices=[AUTH_CLI, AUTH_MI, AUTH_SP],
         help='Authentication method'
+    )
+    arg_parser.add(
+        '--ip-address',
+        default=IP_AUTO,
+        choices=[IP_AUTO, IP_PRIVATE, IP_PUBLIC],
+        help='IP address to use for SSH connections (default auto = autodetect, private IP address first)'
     )
     arg_parser.add('--tenant-id',
                    help='Tenant ID for service principal authentication')
