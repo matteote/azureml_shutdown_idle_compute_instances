@@ -159,6 +159,7 @@ class SshClient:
         result = exec(
             [
                 'ssh',
+                '-o StrictHostKeyChecking=no',
                 self.destination,
                 '-p',
                 self.port
@@ -171,6 +172,7 @@ class SshClient:
         exec(
             [
                 'scp',
+                '-o StrictHostKeyChecking=no',
                 '-P',
                 self.port,
                 source,
